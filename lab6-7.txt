@@ -1,0 +1,145 @@
+#include <iostream>
+#include <cmath>
+#include "Walnut/Application.h"
+#include "Walnut/EntryPoint.h"
+#include "Walnut/Image.h"
+#include "Walnut/UI/UI.h"
+
+class ExampleLayer : public Walnut::Layer
+{
+public:
+    ExampleLayer()
+        : m_N(0.0f), m_M(0.0f), a(0.0f), b(0.0f), c(0.0f), m_ResultDisplayed_task1(false), m_ResultDisplayed_task2(false) {}
+
+    virtual void OnUIRender() override
+    {
+        ImGui::Begin("Task 1 Variant 3");
+        ImGui::InputFloat("Value for n", &m_N);
+        ImGui::InputFloat("Value for m", &m_M);
+        if (ImGui::Button("Calculate task 1"))
+        {
+            computeValues();
+        }
+        if (m_ResultDisplayed_task1)
+        {
+            ImGui::Text("The result will be:");
+            if (m_AbsL < 5)
+            {
+                ImGui::Text("l = %.2f, square of l will be: %.2f", m_L, pow(m_L, 2));
+            }
+            if (m_AbsK < 5)
+            {
+                ImGui::Text("k = %.2f, square of l will be: %.2f", m_K, pow(m_K, 2));
+            }
+            if (m_AbsH < 5)
+            {
+                ImGui::Text("h = %.2f, square of l will be: %.2f", m_H, pow(m_H, 2));
+            }
+        }
+        if (ImGui::Button("Clear Task 1"))
+        {
+            clear_task1();
+        }
+        ImGui::End();
+
+        ImGui::Begin("Task 2");
+        ImGui::InputFloat("Coefficient a", &a);
+        ImGui::InputFloat("Coefficient b", &b);
+        ImGui::InputFloat("Coefficient c", &c);
+        if (ImGui::Button("Calculate task 2"))
+        {
+            calc_task2();
+        }
+        if (m_ResultDisplayed_task2)
+        {
+            ImGui::Text("Results:");
+            if (RootCount == 2)
+            {
+                ImGui::Text("x1 = %.2f", x1);
+                ImGui::Text("x2 = %.2f", x2);
+            }
+            else if (RootCount == 1)
+            {
+                ImGui::Text("x = %.2f", x1);
+            }
+            else
+            {
+                ImGui::Text("No real roots.");
+            }
+        }
+        if (ImGui::Button("Clear Task 2"))
+        {
+            clear_task2();
+        }
+        ImGui::End();
+    }
+private:
+    float m_N, m_M, m_L, m_K, m_H, m_AbsL, m_AbsK, m_AbsH;
+    float a, b, c, x1, x2;
+    int RootCount;
+    bool m_ResultDisplayed_task1;
+    bool m_ResultDisplayed_task2;
+
+    void computeValues()
+    {
+        m_L = (m_N - 3 * m_M) / 2;
+        m_K = (2 * m_N + m_M) / m_N;
+        m_H = m_N * m_M - 9.3;
+        m_AbsL = std::abs(m_L);
+        m_AbsK = std::abs(m_K);
+        m_AbsH = std::abs(m_H);
+        m_ResultDisplayed_task1 = true;
+    }
+
+    void calc_task2()
+    {
+        float D = b * b - 4 * a * c;
+        if (D > 0)
+        {
+            x1 = (-b - std::sqrt(D)) / (2 * a);
+            x2 = (-b + std::sqrt(D)) / (2 * a);
+            RootCount = 2;
+        }
+        else if (D == 0)
+        {
+            x1 = -b / (2 * a);
+            RootCount = 1;
+        }
+        else
+        {
+            RootCount = 0;
+        }
+        m_ResultDisplayed_task2 = true;
+    }
+    void clear_task1()
+    {
+        m_ResultDisplayed_task1 = false;
+    }
+    void clear_task2()
+    {
+        m_ResultDisplayed_task2 = false;
+    }
+};
+
+Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
+{
+    Walnut::ApplicationSpecification spec;
+    spec.Name = "Lab6";
+    spec.CustomTitlebar = true;
+
+    Walnut::Application* app = new Walnut::Application(spec);
+    std::shared_ptr<ExampleLayer> exampleLayer = std::make_shared<ExampleLayer>();
+    app->PushLayer(exampleLayer);
+    app->SetMenubarCallback([app, exampleLayer]()
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("Exit"))
+                {
+                    app->Close();
+                }
+                ImGui::EndMenu();
+            }
+        });
+    return app;
+}
