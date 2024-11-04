@@ -1,0 +1,192 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include "Walnut/Application.h"
+#include "Walnut/EntryPoint.h"
+#include "Walnut/UI/UI.h"
+
+class QuizLayer : public Walnut::Layer
+{
+public:
+    QuizLayer() : currentQuestionIndex(0), correctAnswers(0), quizCompleted(false), answerChecked(false)
+    {
+        LoadAllQuestions();
+        SelectRandomQuestions();
+    }
+
+    virtual void OnUIRender() override
+    {
+        ImGui::Begin("Testing Program");
+
+        if (quizCompleted)
+        {
+            ImGui::Text("Quiz Completed!");
+            ImGui::Text("Number of Correct Answers: %d out of %d", correctAnswers, (int)selectedQuestions.size());
+            int score = CalculateScore(correctAnswers);
+            ImGui::Text("Your Score: %d", score);
+            if (score >= 6)
+                ImGui::Text("Recommendation: Keep up the good work!");
+            else
+                ImGui::Text("Recommendation: It's recommended to review the material.");
+            if (ImGui::Button("Restart"))
+            {
+                ResetQuiz();
+            }
+        }
+        else
+        {
+            DisplayQuestion();
+
+            if (answerChecked)
+            {
+                ImGui::Text("%s", answerMessage.c_str());
+            }
+
+            if (ImGui::Button("Check Answer") && !answerChecked)
+            {
+                CheckAnswer();
+            }
+            if (ImGui::Button("Next Question"))
+            {
+                NextQuestion();
+            }
+        }
+
+        ImGui::End();
+    }
+
+private:
+    struct Question
+    {
+        std::string text;
+        std::vector<std::string> options;
+        int correctOption;
+    };
+
+    std::vector<Question> allQuestions;
+    std::vector<Question> selectedQuestions;
+    int currentQuestionIndex;
+    int correctAnswers;
+    bool quizCompleted;
+    int selectedOption = -1;
+    bool answerChecked = false;
+    std::string answerMessage;
+
+    void LoadAllQuestions()
+    {
+        allQuestions = {
+            {"Which operator is used for addition in C#?", {"+", "-", "*", "/"}, 0},
+            {"What does the '/' operator represent?", {"Addition", "Subtraction", "Multiplication", "Division"}, 3},
+            {"Which function is used for exponentiation?", {"Math.Pow", "Math.Sqrt", "Math.Exp", "Math.Log"}, 0},
+            {"What does the '%' operator signify?", {"Modulus", "Division", "Exponentiation", "Subtraction"}, 0},
+            {"How do you declare an integer variable in C#?", {"int", "double", "float", "char"}, 0},
+            {"Which of these is a valid loop type in C#?", {"for", "if", "switch", "case"}, 0},
+            {"Simplified multiplication formulas are?", {"a^2 + b^2", "(a + b)^2", "a - b", "ab"}, 1},
+            {"What is the result of '5 % 2'?", {"2", "5", "1", "0"}, 2},
+            {"The syntax for declaring a constant in C#?", {"const", "let", "static", "final"}, 0},
+            {"Which key is used to compile in Visual Studio?", {"F5", "F8", "F9", "F10"}, 0},
+            {"What data type stores true/false values?", {"int", "bool", "float", "double"}, 1},
+            {"To declare a string, you use:", {"String", "string", "char", "text"}, 1},
+            {"Which operator checks for equality?", {"==", "=", "!=", "equals"}, 0},
+            {"How do you print to the console in C#?", {"print()", "console.log()", "Console.WriteLine()", "echo"}, 2},
+            {"What does '++' do to a variable?", {"Increment", "Decrement", "Multiply", "Divide"}, 0}
+        };
+    }
+
+    void SelectRandomQuestions()
+    {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        selectedQuestions = allQuestions;
+        std::shuffle(selectedQuestions.begin(), selectedQuestions.end(), g);
+        selectedQuestions.resize(5);
+    }
+
+    void DisplayQuestion()
+    {
+        auto& question = selectedQuestions[currentQuestionIndex];
+        ImGui::Text("Question %d: %s", currentQuestionIndex + 1, question.text.c_str());
+
+        for (int i = 0; i < question.options.size(); i++)
+        {
+            ImGui::RadioButton(question.options[i].c_str(), &selectedOption, i);
+        }
+    }
+
+    void CheckAnswer()
+    {
+        auto& question = selectedQuestions[currentQuestionIndex];
+        if (selectedOption == question.correctOption)
+        {
+            correctAnswers++;
+            answerMessage = "Correct!";
+        }
+        else
+        {
+            answerMessage = "Incorrect! The correct answer is: " + question.options[question.correctOption];
+        }
+
+        answerChecked = true;
+    }
+
+    void NextQuestion()
+    {
+        if (currentQuestionIndex < selectedQuestions.size() - 1)
+        {
+            currentQuestionIndex++;
+            ResetInput();
+        }
+        else
+        {
+            quizCompleted = true;
+        }
+        answerChecked = false;
+    }
+
+    void ResetInput()
+    {
+        selectedOption = -1;
+    }
+
+    void ResetQuiz()
+    {
+        correctAnswers = 0;
+        currentQuestionIndex = 0;
+        quizCompleted = false;
+        ResetInput();
+        answerChecked = false;
+        SelectRandomQuestions();
+    }
+
+    int CalculateScore(int correctAnswers)
+    {
+        if (correctAnswers == 5) return 10;
+        if (correctAnswers == 4) return 8;
+        if (correctAnswers == 3) return 6;
+        return 4;
+    }
+};
+
+Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
+{
+    Walnut::ApplicationSpecification spec;
+    spec.Name = "C# Testing Program";
+    spec.CustomTitlebar = true;
+
+    Walnut::Application* app = new Walnut::Application(spec);
+    std::shared_ptr<QuizLayer> quizLayer = std::make_shared<QuizLayer>();
+    app->PushLayer(quizLayer);
+    app->SetMenubarCallback([app, quizLayer]()
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("Exit"))
+                {
+                    app->Close();
+                }
+                ImGui::EndMenu();
+            }
+        });
+    return app;
+}
